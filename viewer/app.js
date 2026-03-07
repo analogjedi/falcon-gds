@@ -20,6 +20,7 @@ const gltfLoader = new GLTFLoader();
 const dom = {
   canvas: document.querySelector("#scene"),
   quickActions: document.querySelector("#quick-actions"),
+  snapshotView: document.querySelector("#snapshot-view"),
   toggleMetals: document.querySelector("#toggle-metals"),
   toggleVias: document.querySelector("#toggle-vias"),
   toggleBase: document.querySelector("#toggle-base"),
@@ -48,7 +49,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color("#08111a");
 scene.fog = new THREE.Fog("#08111a", 800, 6800);
 
-const renderer = new THREE.WebGLRenderer({ canvas: dom.canvas, antialias: true, alpha: false });
+const renderer = new THREE.WebGLRenderer({ canvas: dom.canvas, antialias: true, alpha: false, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 
@@ -198,6 +199,54 @@ function refreshVisibilityUi() {
 function setCategoriesVisibility(categories, visible) {
   getItemsByCategories(categories).forEach((item) => setItemVisibility(item, visible));
   refreshVisibilityUi();
+}
+
+function buildSnapshotFilename() {
+  const slug = state.activeDataset?.slug || "scene";
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[:-]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
+  return `gdsight-${slug}-${stamp}.png`;
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function captureSnapshot() {
+  renderer.render(scene, camera);
+  const filename = buildSnapshotFilename();
+
+  const handleBlob = (blob) => {
+    if (!blob) {
+      setLoadProgress("Snapshot failed: browser did not return image data.", 1, { error: true });
+      return;
+    }
+    triggerDownload(blob, filename);
+    dom.loadStatus.textContent = `Saved snapshot ${filename}`;
+  };
+
+  if (typeof dom.canvas.toBlob === "function") {
+    dom.canvas.toBlob(handleBlob, "image/png");
+    return;
+  }
+
+  const dataUrl = dom.canvas.toDataURL("image/png");
+  fetch(dataUrl)
+    .then((response) => response.blob())
+    .then(handleBlob)
+    .catch((error) => {
+      console.error(error);
+      setLoadProgress(`Snapshot failed: ${error.message}`, 1, { error: true });
+    });
 }
 
 function disposeMaterial(material) {
@@ -697,6 +746,10 @@ dom.explodeRange.addEventListener("input", (event) => {
 
 dom.resetCamera.addEventListener("click", () => {
   fitCameraToObject(state.activeGroup || contentRoot);
+});
+
+dom.snapshotView.addEventListener("click", () => {
+  captureSnapshot();
 });
 
 dom.toggleMetals.addEventListener("click", () => {
