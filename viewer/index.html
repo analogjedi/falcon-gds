@@ -66,6 +66,40 @@
       </aside>
 
       <main class="viewport">
+        <div id="quick-actions" class="quick-actions" aria-label="Quick layer actions" hidden>
+          <button id="toggle-metals" class="quick-action-button" type="button">Hide Metals</button>
+          <button id="toggle-vias" class="quick-action-button" type="button">Hide Vias</button>
+          <button id="toggle-base" class="quick-action-button" type="button">Hide Base Layers</button>
+          <div class="quick-mix">
+            <button
+              id="quick-mix-button"
+              class="quick-action-button quick-mix-button"
+              type="button"
+              aria-haspopup="true"
+              aria-expanded="false"
+            >
+              Quick Mix
+            </button>
+            <div id="quick-mix-menu" class="quick-mix-menu" hidden>
+              <label class="quick-mix-option">
+                <input id="mix-metals" type="checkbox" />
+                <span>Metals</span>
+              </label>
+              <label class="quick-mix-option">
+                <input id="mix-vias" type="checkbox" />
+                <span>Vias</span>
+              </label>
+              <label class="quick-mix-option">
+                <input id="mix-base" type="checkbox" />
+                <span>Base Layers</span>
+              </label>
+              <label class="quick-mix-option">
+                <input id="mix-poly" type="checkbox" />
+                <span>Gate Poly</span>
+              </label>
+            </div>
+          </div>
+        </div>
         <canvas id="scene"></canvas>
         <div class="hud">
           <span>Grab: drag XY</span>

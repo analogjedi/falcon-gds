@@ -19,6 +19,16 @@ const gltfLoader = new GLTFLoader();
 
 const dom = {
   canvas: document.querySelector("#scene"),
+  quickActions: document.querySelector("#quick-actions"),
+  toggleMetals: document.querySelector("#toggle-metals"),
+  toggleVias: document.querySelector("#toggle-vias"),
+  toggleBase: document.querySelector("#toggle-base"),
+  quickMixButton: document.querySelector("#quick-mix-button"),
+  quickMixMenu: document.querySelector("#quick-mix-menu"),
+  mixMetals: document.querySelector("#mix-metals"),
+  mixVias: document.querySelector("#mix-vias"),
+  mixBase: document.querySelector("#mix-base"),
+  mixPoly: document.querySelector("#mix-poly"),
   datasetSelect: document.querySelector("#dataset-select"),
   datasetButtons: document.querySelector("#dataset-buttons"),
   loadStatus: document.querySelector("#load-status"),
@@ -91,6 +101,104 @@ const state = {
   explodeAmount: Number(dom.explodeRange.value),
   loadToken: 0,
 };
+
+function classifyLayerCategory(layer) {
+  if (!layer) {
+    return "other";
+  }
+
+  const name = layer.name.toLowerCase();
+  if (layer.datatype === 44) {
+    return "via";
+  }
+  if (name.includes("poly")) {
+    return "poly";
+  }
+  if (name.startsWith("metal") || name === "li") {
+    return "metal";
+  }
+  if (name.includes("well") || name.includes("diffusion")) {
+    return "base";
+  }
+  return "other";
+}
+
+function getLayerItems() {
+  return state.activeItems.filter((item) => item.category !== "overview");
+}
+
+function getItemsByCategories(categories) {
+  const categorySet = new Set(categories);
+  return state.activeItems.filter((item) => categorySet.has(item.category));
+}
+
+function setQuickMixOpen(open) {
+  dom.quickMixMenu.hidden = !open;
+  dom.quickMixButton.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function setItemVisibility(item, visible) {
+  item.object.visible = visible;
+  if (item.companion) {
+    item.companion.visible = visible;
+  }
+  if (item.checkbox) {
+    item.checkbox.checked = visible;
+  }
+}
+
+function syncMixCheckbox(input, categories) {
+  const items = getItemsByCategories(categories);
+  const visibleCount = items.filter((item) => item.object.visible).length;
+  input.disabled = items.length === 0;
+  input.checked = items.length > 0 && visibleCount === items.length;
+  input.indeterminate = visibleCount > 0 && visibleCount < items.length;
+}
+
+function updateQuickActionState() {
+  const hasDetailLayers = state.activeDataset?.kind === "detail" && getLayerItems().length > 0;
+  dom.quickActions.hidden = !hasDetailLayers;
+  if (!hasDetailLayers) {
+    setQuickMixOpen(false);
+    dom.quickMixButton.textContent = "Quick Mix";
+    return;
+  }
+
+  const groups = [
+    { button: dom.toggleMetals, items: getItemsByCategories(["metal"]), label: "Metals" },
+    { button: dom.toggleVias, items: getItemsByCategories(["via"]), label: "Vias" },
+    { button: dom.toggleBase, items: getItemsByCategories(["base", "poly"]), label: "Base Layers" },
+  ];
+
+  groups.forEach(({ button, items, label }) => {
+    const visibleCount = items.filter((item) => item.object.visible).length;
+    const allVisible = items.length > 0 && visibleCount === items.length;
+    const partialVisible = visibleCount > 0 && visibleCount < items.length;
+
+    button.disabled = items.length === 0;
+    button.textContent = `${allVisible ? "Hide" : "Show"} ${label}`;
+    button.classList.toggle("is-active", allVisible);
+    button.classList.toggle("is-mixed", partialVisible);
+  });
+
+  syncMixCheckbox(dom.mixMetals, ["metal"]);
+  syncMixCheckbox(dom.mixVias, ["via"]);
+  syncMixCheckbox(dom.mixBase, ["base"]);
+  syncMixCheckbox(dom.mixPoly, ["poly"]);
+
+  const activeMixCount = [dom.mixMetals, dom.mixVias, dom.mixBase, dom.mixPoly].filter((input) => input.checked).length;
+  dom.quickMixButton.textContent = activeMixCount === 4 ? "Quick Mix: All" : `Quick Mix (${activeMixCount}/4)`;
+}
+
+function refreshVisibilityUi() {
+  updateStats();
+  updateQuickActionState();
+}
+
+function setCategoriesVisibility(categories, visible) {
+  getItemsByCategories(categories).forEach((item) => setItemVisibility(item, visible));
+  refreshVisibilityUi();
+}
 
 function disposeMaterial(material) {
   if (Array.isArray(material)) {
@@ -263,6 +371,7 @@ function buildDetailScene(data) {
       subtitle: `GDS ${layer.layer}/${layer.datatype}`,
       metric: `${layer.polygon_count.toLocaleString()} polys`,
       color: layer.color,
+      category: classifyLayerCategory(layer),
       object: mesh,
       explodeIndex: index,
       baseY: 0,
@@ -310,6 +419,7 @@ function buildOverviewScene(data) {
       subtitle: reference.cell,
       metric: `${reference.size_um[0].toFixed(1)} x ${reference.size_um[1].toFixed(1)} um`,
       color: reference.color,
+      category: "overview",
       object: mesh,
       companion: edge,
       explodeIndex: index,
@@ -359,6 +469,7 @@ function buildGlbScene(data, gltf) {
       subtitle: meta ? `GDS ${meta.layer}/${meta.datatype}` : "GLB mesh",
       metric: meta ? `${meta.polygon_count.toLocaleString()} polys` : `${mesh.geometry.attributes.position.count.toLocaleString()} verts`,
       color: meta ? meta.color : `#${material.color.getHexString()}`,
+      category: classifyLayerCategory(meta),
       object: mesh,
       explodeIndex: index,
       baseY: mesh.position.y,
@@ -378,12 +489,10 @@ function renderItemList() {
     checkbox.type = "checkbox";
     checkbox.checked = item.object.visible;
     checkbox.addEventListener("change", () => {
-      item.object.visible = checkbox.checked;
-      if (item.companion) {
-        item.companion.visible = checkbox.checked;
-      }
-      updateStats();
+      setItemVisibility(item, checkbox.checked);
+      refreshVisibilityUi();
     });
+    item.checkbox = checkbox;
 
     const label = document.createElement("div");
     label.className = "layer-label";
@@ -396,6 +505,8 @@ function renderItemList() {
     row.append(checkbox, label, swatch);
     dom.layerList.append(row);
   });
+
+  updateQuickActionState();
 }
 
 function renderMeta(data, dataset) {
@@ -586,6 +697,54 @@ dom.explodeRange.addEventListener("input", (event) => {
 
 dom.resetCamera.addEventListener("click", () => {
   fitCameraToObject(state.activeGroup || contentRoot);
+});
+
+dom.toggleMetals.addEventListener("click", () => {
+  const items = getItemsByCategories(["metal"]);
+  if (!items.length) {
+    return;
+  }
+  const shouldShow = items.some((item) => !item.object.visible);
+  setCategoriesVisibility(["metal"], shouldShow);
+});
+
+dom.toggleVias.addEventListener("click", () => {
+  const items = getItemsByCategories(["via"]);
+  if (!items.length) {
+    return;
+  }
+  const shouldShow = items.some((item) => !item.object.visible);
+  setCategoriesVisibility(["via"], shouldShow);
+});
+
+dom.toggleBase.addEventListener("click", () => {
+  const items = getItemsByCategories(["base", "poly"]);
+  if (!items.length) {
+    return;
+  }
+  const shouldShow = items.some((item) => !item.object.visible);
+  setCategoriesVisibility(["base", "poly"], shouldShow);
+});
+
+dom.quickMixButton.addEventListener("click", () => {
+  setQuickMixOpen(dom.quickMixMenu.hidden);
+});
+
+[
+  [dom.mixMetals, ["metal"]],
+  [dom.mixVias, ["via"]],
+  [dom.mixBase, ["base"]],
+  [dom.mixPoly, ["poly"]],
+].forEach(([input, categories]) => {
+  input.addEventListener("change", () => {
+    setCategoriesVisibility(categories, input.checked);
+  });
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!dom.quickActions.hidden && !dom.quickMixMenu.hidden && !dom.quickActions.contains(event.target)) {
+    setQuickMixOpen(false);
+  }
 });
 
 dom.grabMode.addEventListener("click", () => {
