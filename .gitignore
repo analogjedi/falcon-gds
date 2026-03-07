@@ -1,0 +1,8 @@
+.DS_Store
+.playwright-cli/
+venv/
+__pycache__/
+*.pyc
+external/
+output/
+data/user_analog_project_wrapper.gds

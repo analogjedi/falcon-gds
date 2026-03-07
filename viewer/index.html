@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meta Quest IC Layout Viewer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="panel">
+        <div>
+          <p class="eyebrow">Phase 0 Viewer</p>
+          <h1>SKY130 CW IP Explorer</h1>
+          <p class="panel-copy">
+            Real browser-side 3D views derived from Christoph Weiser's existing
+            SKY130 GDSII files.
+          </p>
+        </div>
+
+        <section class="panel-section">
+          <div class="section-header">
+            <h2>Scene Controls</h2>
+          </div>
+          <label class="control">
+            <span>Dataset</span>
+            <select id="dataset-select"></select>
+          </label>
+          <div id="dataset-buttons" class="chip-grid"></div>
+          <div class="mode-toggle" role="group" aria-label="Interaction mode">
+            <button id="grab-mode" class="mode-button" type="button">Grab</button>
+            <button id="orbit-mode" class="mode-button" type="button">Orbit</button>
+          </div>
+          <p id="control-hint" class="control-hint"></p>
+          <label class="control">
+            <span>Explode Layers</span>
+            <input id="explode-range" type="range" min="0" max="40" step="1" value="10" />
+          </label>
+          <button id="reset-camera" type="button">Reset Camera</button>
+          <div id="load-progress-track" class="load-progress-track">
+            <div id="load-progress-bar" class="load-progress-bar"></div>
+          </div>
+          <p id="load-status" class="control-hint"></p>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-header">
+            <h2>Dataset Info</h2>
+          </div>
+          <div id="dataset-meta" class="meta-card"></div>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-header">
+            <h2>Visible Items</h2>
+          </div>
+          <div id="layer-list" class="layer-list"></div>
+        </section>
+
+        <section class="panel-section">
+          <div class="section-header">
+            <h2>Scene Stats</h2>
+          </div>
+          <dl id="scene-stats" class="stats"></dl>
+        </section>
+      </aside>
+
+      <main class="viewport">
+        <canvas id="scene"></canvas>
+        <div class="hud">
+          <span>Grab: drag XY</span>
+          <span>Grab depth: Shift + drag</span>
+          <span>Quest path: world grab analogue</span>
+        </div>
+      </main>
+    </div>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.1/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.1/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
