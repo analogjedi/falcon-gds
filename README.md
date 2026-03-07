@@ -25,6 +25,9 @@ This is not a mock-layout demo. The browser viewer is already driven by existing
 - Real `GDSII -> GLB` export for detailed cell views
 - Browser-side 3D viewer with live loading progress
 - Layer explosion control and per-layer visibility
+- Top-bar quick actions for metals, vias, and base layers
+- Quick-mix layer filtering for combinations like `metals + vias` or `metals + gate poly`
+- Canvas-only PNG snapshot export from the current 3D view
 - Grab-mode navigation inspired by Quest-style world manipulation
 - Orbit mode with local pivot targeting and pointer-focused zoom
 - SKY130 layer stack support for active geometry, poly, local interconnect, metals, and contact/via layers
@@ -113,6 +116,9 @@ The viewer includes:
 - dataset switching between top-level and detailed blocks
 - loading progress feedback for GLB scenes
 - orbit and grab interaction modes
+- top-bar quick actions for hiding/showing metals, vias, and base layers
+- combinable quick-mix checkboxes for `Metals`, `Vias`, `Base Layers`, and `Gate Poly`
+- `Snapshot PNG` export of the WebGL canvas without the sidebar, top controls, or HUD
 - dataset metadata, scene stats, and layer toggles
 
 ## Current Limits
@@ -121,6 +127,7 @@ The viewer includes:
 - Implant, marker, and non-visual process layers outside the current stack are still omitted
 - Overview scenes are still JSON-backed rather than GLB-backed
 - The first GLB pass emits non-indexed meshes, so file sizes are larger than they should be
+- Snapshot export currently captures the on-screen canvas resolution rather than a supersampled render
 - The XR path is still architectural intent; the current shipped viewer is browser-first
 
 ## Roadmap
