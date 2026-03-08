@@ -2,11 +2,11 @@
 
 Immersive 3D layout inspection for GDSII-based IC designs, starting with real SKY130 analog IP in the browser and aiming toward Meta Quest / WebXR.
 
-![GDSight regulator viewer](docs/images/gdsight-regulator-viewer.png)
+![Falcon-GDS regulator viewer](docs/images/gdsight-regulator-viewer.png)
 
 ## Overview
 
-GDSight turns existing GDSII layout data into navigable 3D scenes.
+Falcon-GDS turns existing GDSII layout data into navigable 3D scenes.
 
 The current prototype uses real SKY130 layout data from Christoph Weiser's `sky130_cw_ip` project, exports selected cells into browser-friendly assets, and renders them with interaction patterns meant to carry forward into XR.
 
@@ -24,10 +24,12 @@ This is not a mock-layout demo. The browser viewer is already driven by existing
 - Real `GDSII -> JSON` export for overview scenes
 - Real `GDSII -> GLB` export for detailed cell views
 - Browser-side 3D viewer with live loading progress
+- Default `Fly` mode with pointer-lock mouse look and `W/A/S/D` navigation
 - Layer explosion control and per-layer visibility
 - Top-bar quick actions for metals, vias, and base layers
 - Quick-mix layer filtering for combinations like `metals + vias` or `metals + gate poly`
 - Canvas-only PNG snapshot export from the current 3D view
+- Manual viewport-only WebM recording from the current 3D view
 - Grab-mode navigation inspired by Quest-style world manipulation
 - Orbit mode with local pivot targeting and pointer-focused zoom
 - SKY130 layer stack support for active geometry, poly, local interconnect, metals, and contact/via layers
@@ -38,6 +40,7 @@ This is not a mock-layout demo. The browser viewer is already driven by existing
 - [scripts/sky130_common.py](scripts/sky130_common.py): shared SKY130 layer stack and dataset definitions
 - [scripts/export_sky130_demo.py](scripts/export_sky130_demo.py): exports overview/detail JSON datasets for the browser viewer
 - [scripts/export_gds_glb.py](scripts/export_gds_glb.py): exports detailed GLB scenes from existing GDSII cells
+- [scripts/transcode_recording.sh](scripts/transcode_recording.sh): converts browser-recorded WebM clips into LinkedIn-safe MP4 files
 - [viewer/index.html](viewer/index.html): no-build browser viewer entrypoint
 - [viewer/app.js](viewer/app.js): scene loading, controls, UI state, and GLB integration
 - [viewer/serve.py](viewer/serve.py): local dev server for the viewer and generated GLBs
@@ -115,11 +118,37 @@ The viewer includes:
 
 - dataset switching between top-level and detailed blocks
 - loading progress feedback for GLB scenes
-- orbit and grab interaction modes
+- `Fly`, `Grab`, and `Orbit` interaction modes
+- `Fly` mode uses pointer lock, mouse look, `W/A/S/D` planar movement, `Arrow Up` / `Arrow Down` or `R/F` for height, `Shift` speed boost, and mouse wheel speed changes
 - top-bar quick actions for hiding/showing metals, vias, and base layers
 - combinable quick-mix checkboxes for `Metals`, `Vias`, `Base Layers`, and `Gate Poly`
 - `Snapshot PNG` export of the WebGL canvas without the sidebar, top controls, or HUD
+- `Start Recording` / `Stop Recording` viewport-only WebM capture for manual fly-throughs
 - dataset metadata, scene stats, and layer toggles
+
+## Recording And Social Export
+
+Falcon-GDS can record a manual fly-through directly from the WebGL canvas:
+
+1. Open a detail dataset such as `LDO Detail`
+2. Click `Start Recording`
+3. Fly the scene normally
+4. Click `Stop Recording`
+5. The app downloads a viewport-only `.webm`
+
+The recording excludes the sidebar and overlay UI, but some social platforms are more reliable with `MP4/H.264` than raw browser `WebM`.
+
+Convert a recording with:
+
+```bash
+scripts/transcode_recording.sh path/to/recording.webm
+```
+
+Or choose an explicit output path:
+
+```bash
+scripts/transcode_recording.sh path/to/recording.webm path/to/recording.mp4
+```
 
 ## Current Limits
 
@@ -128,6 +157,7 @@ The viewer includes:
 - Overview scenes are still JSON-backed rather than GLB-backed
 - The first GLB pass emits non-indexed meshes, so file sizes are larger than they should be
 - Snapshot export currently captures the on-screen canvas resolution rather than a supersampled render
+- Recording export currently produces browser-native `WebM`; use the helper script to transcode to `MP4` for safer social upload
 - The XR path is still architectural intent; the current shipped viewer is browser-first
 
 ## Roadmap
