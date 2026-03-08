@@ -54,8 +54,9 @@
         <section class="panel-section">
           <div class="section-header">
             <h2>Visible Items</h2>
+            <button id="layer-panel-toggle" class="section-button" type="button">Open</button>
           </div>
-          <div id="layer-list" class="layer-list"></div>
+          <p id="layer-summary" class="control-hint">Layer selector closed.</p>
         </section>
 
         <section class="panel-section">
@@ -107,6 +108,13 @@
           <span id="hud-primary">Fly: click view to capture mouse</span>
           <span id="hud-secondary">WASD move, arrows change height, wheel sets speed</span>
           <span id="hud-tertiary">Speed 80 um/s</span>
+        </div>
+        <div id="layer-selector" class="layer-selector" hidden>
+          <div class="layer-selector-header">
+            <strong>Layer Selector</strong>
+            <button id="layer-panel-close" class="section-button" type="button">Close</button>
+          </div>
+          <div id="layer-list" class="layer-list"></div>
         </div>
       </main>
     </div>

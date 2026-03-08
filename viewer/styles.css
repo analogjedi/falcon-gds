@@ -30,7 +30,7 @@ body {
 
 .app-shell {
   display: grid;
-  grid-template-columns: minmax(300px, 360px) 1fr;
+  grid-template-columns: minmax(280px, 320px) 1fr;
   min-height: 100vh;
 }
 
@@ -42,6 +42,7 @@ body {
   background: var(--panel-bg);
   border-right: 1px solid var(--panel-border);
   backdrop-filter: blur(18px);
+  overflow-y: auto;
 }
 
 .eyebrow {
@@ -91,6 +92,11 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.section-button {
+  padding: 0.42rem 0.78rem;
+  font-size: 0.78rem;
 }
 
 .control {
@@ -214,12 +220,6 @@ button:hover {
 
 .meta-line strong {
   color: var(--text-primary);
-}
-
-.layer-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.65rem;
 }
 
 .layer-row {
@@ -370,11 +370,49 @@ button:hover {
   height: 100%;
 }
 
+.layer-selector {
+  position: absolute;
+  top: 5.8rem;
+  right: 1.25rem;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  width: min(25rem, calc(100vw - 2.5rem));
+  max-height: min(72vh, 48rem);
+  padding: 0.9rem;
+  border-radius: 18px;
+  background: rgba(8, 13, 19, 0.93);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(18px);
+}
+
+.layer-selector[hidden] {
+  display: none;
+}
+
+.layer-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.layer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
 .hud {
   position: absolute;
-  bottom: 1.25rem;
-  left: 1.25rem;
+  top: 1.25rem;
+  left: 50%;
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
   padding: 0.75rem 0.95rem;
   border-radius: 999px;
@@ -382,6 +420,12 @@ button:hover {
   border: 1px solid rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(12px);
   font-size: 0.8rem;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.viewport.has-quick-actions .hud {
+  top: 5.2rem;
 }
 
 @keyframes load-slide {
@@ -414,6 +458,14 @@ button:hover {
     padding: 0.7rem;
   }
 
+  .layer-selector {
+    top: 8.2rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-height: min(54vh, 36rem);
+  }
+
   .quick-action-button {
     min-width: 0;
     flex: 1 1 9rem;
@@ -434,9 +486,11 @@ button:hover {
   }
 
   .hud {
-    left: 50%;
-    transform: translateX(-50%);
-    flex-wrap: wrap;
     justify-content: center;
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  .viewport.has-quick-actions .hud {
+    top: 10.8rem;
   }
 }

@@ -18,6 +18,7 @@ const DATASET_BY_SLUG = new Map(DATASETS.map((dataset) => [dataset.slug, dataset
 const gltfLoader = new GLTFLoader();
 
 const dom = {
+  viewport: document.querySelector(".viewport"),
   canvas: document.querySelector("#scene"),
   quickActions: document.querySelector("#quick-actions"),
   snapshotView: document.querySelector("#snapshot-view"),
@@ -35,6 +36,10 @@ const dom = {
   loadStatus: document.querySelector("#load-status"),
   loadProgressTrack: document.querySelector("#load-progress-track"),
   loadProgressBar: document.querySelector("#load-progress-bar"),
+  layerPanelToggle: document.querySelector("#layer-panel-toggle"),
+  layerPanelClose: document.querySelector("#layer-panel-close"),
+  layerSummary: document.querySelector("#layer-summary"),
+  layerSelector: document.querySelector("#layer-selector"),
   layerList: document.querySelector("#layer-list"),
   sceneStats: document.querySelector("#scene-stats"),
   datasetMeta: document.querySelector("#dataset-meta"),
@@ -121,6 +126,7 @@ const state = {
   activeRenderMode: "json",
   explodeAmount: Number(dom.explodeRange.value),
   loadToken: 0,
+  layerSelectorOpen: false,
 };
 
 function classifyLayerCategory(layer) {
@@ -158,6 +164,13 @@ function setQuickMixOpen(open) {
   dom.quickMixButton.setAttribute("aria-expanded", open ? "true" : "false");
 }
 
+function setLayerSelectorOpen(open) {
+  state.layerSelectorOpen = open;
+  dom.layerSelector.hidden = !open;
+  dom.layerPanelToggle.textContent = open ? "Hide" : "Open";
+  dom.layerPanelToggle.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
 function setItemVisibility(item, visible) {
   item.object.visible = visible;
   if (item.companion) {
@@ -179,6 +192,7 @@ function syncMixCheckbox(input, categories) {
 function updateQuickActionState() {
   const hasDetailLayers = state.activeDataset?.kind === "detail" && getLayerItems().length > 0;
   dom.quickActions.hidden = !hasDetailLayers;
+  dom.viewport.classList.toggle("has-quick-actions", hasDetailLayers);
   if (!hasDetailLayers) {
     setQuickMixOpen(false);
     dom.quickMixButton.textContent = "Quick Mix";
@@ -468,14 +482,19 @@ function fitCameraToObject(object) {
   }
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  const maxSize = Math.max(size.x, size.y, size.z);
-  const fitHeightDistance = maxSize / (2 * Math.tan((Math.PI * camera.fov) / 360));
-  const distance = fitHeightDistance * 1.6;
+  const planarSpan = Math.max(size.x, size.z);
+  const verticalSpan = Math.max(size.y, 1);
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * camera.aspect);
+  const horizontalFitDistance = (planarSpan * 0.5) / Math.tan(horizontalFov / 2);
+  const verticalFitDistance = (verticalSpan * 0.5) / Math.tan(verticalFov / 2);
+  const distance = Math.max(horizontalFitDistance * 1.28, verticalFitDistance * 1.5, planarSpan * 0.68);
+  const elevation = Math.max(verticalSpan * 0.34, distance * 0.18);
 
-  camera.position.set(center.x + distance * 0.96, center.y + distance * 0.72, center.z + distance * 0.88);
+  camera.position.set(center.x + distance * 0.92, center.y + elevation, center.z + distance * 0.76);
   controls.target.copy(center);
   camera.lookAt(center);
-  flyState.speed = THREE.MathUtils.clamp(maxSize * 0.18, 12, 420);
+  flyState.speed = THREE.MathUtils.clamp(planarSpan * 0.16, 12, 420);
   syncFlyAnglesFromCamera();
   if (interactionState.mode === "fly") {
     applyFlyLook();
@@ -693,6 +712,8 @@ function renderItemList() {
   });
 
   updateQuickActionState();
+  const visibleCount = state.activeItems.filter((item) => item.object.visible).length;
+  dom.layerSummary.textContent = `${visibleCount}/${state.activeItems.length} items visible. Open the selector to filter layers and blocks.`;
 }
 
 function renderMeta(data, dataset) {
@@ -920,6 +941,14 @@ dom.quickMixButton.addEventListener("click", () => {
   setQuickMixOpen(dom.quickMixMenu.hidden);
 });
 
+dom.layerPanelToggle.addEventListener("click", () => {
+  setLayerSelectorOpen(!state.layerSelectorOpen);
+});
+
+dom.layerPanelClose.addEventListener("click", () => {
+  setLayerSelectorOpen(false);
+});
+
 [
   [dom.mixMetals, ["metal"]],
   [dom.mixVias, ["via"]],
@@ -934,6 +963,9 @@ dom.quickMixButton.addEventListener("click", () => {
 document.addEventListener("pointerdown", (event) => {
   if (!dom.quickActions.hidden && !dom.quickMixMenu.hidden && !dom.quickActions.contains(event.target)) {
     setQuickMixOpen(false);
+  }
+  if (state.layerSelectorOpen && !dom.layerSelector.contains(event.target) && !dom.layerPanelToggle.contains(event.target)) {
+    setLayerSelectorOpen(false);
   }
 });
 
