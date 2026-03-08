@@ -317,6 +317,11 @@ button:hover {
   border-color: rgba(74, 182, 217, 0.52);
 }
 
+.quick-action-button.is-recording {
+  background: rgba(220, 68, 68, 0.26);
+  border-color: rgba(255, 110, 110, 0.88);
+}
+
 .quick-action-button:disabled {
   opacity: 0.45;
   cursor: default;

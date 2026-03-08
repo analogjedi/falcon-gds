@@ -22,6 +22,7 @@ const dom = {
   canvas: document.querySelector("#scene"),
   quickActions: document.querySelector("#quick-actions"),
   snapshotView: document.querySelector("#snapshot-view"),
+  recordView: document.querySelector("#record-view"),
   toggleMetals: document.querySelector("#toggle-metals"),
   toggleVias: document.querySelector("#toggle-vias"),
   toggleBase: document.querySelector("#toggle-base"),
@@ -127,6 +128,7 @@ const state = {
   explodeAmount: Number(dom.explodeRange.value),
   loadToken: 0,
   layerSelectorOpen: false,
+  recording: null,
 };
 
 function classifyLayerCategory(layer) {
@@ -244,6 +246,24 @@ function buildSnapshotFilename() {
   return `gdsight-${slug}-${stamp}.png`;
 }
 
+function buildRecordingFilename() {
+  const slug = state.activeDataset?.slug || "scene";
+  const stamp = new Date()
+    .toISOString()
+    .replace(/[:-]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
+  return `gdsight-${slug}-${stamp}.webm`;
+}
+
+function formatDuration(milliseconds) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = (totalSeconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
 function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -253,6 +273,124 @@ function triggerDownload(blob, filename) {
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function getRecordingMimeType() {
+  if (typeof MediaRecorder === "undefined") {
+    return null;
+  }
+
+  const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+  return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+}
+
+function updateRecordingButton() {
+  const recording = state.recording;
+  if (!recording) {
+    dom.recordView.textContent = "Start Recording";
+    dom.recordView.classList.remove("is-recording");
+    dom.recordView.disabled = false;
+    return;
+  }
+
+  const elapsed = Date.now() - recording.startedAt;
+  dom.recordView.textContent = `Stop Recording ${formatDuration(elapsed)}`;
+  dom.recordView.classList.add("is-recording");
+  dom.recordView.disabled = false;
+}
+
+function finalizeRecordingDownload(recording) {
+  const blob = new Blob(recording.chunks, { type: recording.mimeType || "video/webm" });
+  if (!blob.size) {
+    setLoadProgress("Recording failed: no video data was captured.", 1, { error: true });
+    return;
+  }
+  const filename = buildRecordingFilename();
+  triggerDownload(blob, filename);
+  dom.loadStatus.textContent = `Saved recording ${filename}`;
+}
+
+function clearRecordingState(finalize = false) {
+  const recording = state.recording;
+  if (!recording) {
+    return;
+  }
+
+  clearInterval(recording.timerId);
+  recording.stream.getTracks().forEach((track) => track.stop());
+  state.recording = null;
+  updateRecordingButton();
+
+  if (finalize) {
+    finalizeRecordingDownload(recording);
+  }
+}
+
+function stopManualRecording() {
+  if (!state.recording) {
+    return;
+  }
+  if (state.recording.recorder.state !== "inactive") {
+    state.recording.recorder.stop();
+  } else {
+    clearRecordingState(true);
+  }
+}
+
+function startManualRecording() {
+  if (state.recording) {
+    stopManualRecording();
+    return;
+  }
+
+  if (typeof dom.canvas.captureStream !== "function") {
+    setLoadProgress("Recording is not supported by this browser.", 1, { error: true });
+    return;
+  }
+
+  const mimeType = getRecordingMimeType();
+  if (mimeType === null) {
+    setLoadProgress("Recording is not supported by this browser.", 1, { error: true });
+    return;
+  }
+
+  try {
+    const stream = dom.canvas.captureStream(60);
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const recording = {
+      recorder,
+      stream,
+      chunks: [],
+      startedAt: Date.now(),
+      mimeType,
+      timerId: 0,
+    };
+
+    recorder.addEventListener("dataavailable", (event) => {
+      if (event.data && event.data.size > 0) {
+        recording.chunks.push(event.data);
+      }
+    });
+
+    recorder.addEventListener("stop", () => {
+      clearRecordingState(true);
+    });
+
+    recorder.addEventListener("error", (event) => {
+      console.error(event.error);
+      clearRecordingState(false);
+      setLoadProgress(`Recording failed: ${event.error?.message || "MediaRecorder error"}`, 1, { error: true });
+    });
+
+    state.recording = recording;
+    recording.timerId = window.setInterval(updateRecordingButton, 250);
+    updateRecordingButton();
+    recorder.start(250);
+    dom.loadStatus.textContent = "Recording viewport video...";
+  } catch (error) {
+    console.error(error);
+    setLoadProgress(`Recording failed: ${error.message}`, 1, { error: true });
+  }
 }
 
 function captureSnapshot() {
@@ -910,6 +1048,10 @@ dom.snapshotView.addEventListener("click", () => {
   captureSnapshot();
 });
 
+dom.recordView.addEventListener("click", () => {
+  startManualRecording();
+});
+
 dom.toggleMetals.addEventListener("click", () => {
   const items = getItemsByCategories(["metal"]);
   if (!items.length) {
@@ -1085,6 +1227,12 @@ window.addEventListener("blur", () => {
   flyState.activeKeys.clear();
 });
 
+window.addEventListener("beforeunload", () => {
+  if (state.recording) {
+    stopManualRecording();
+  }
+});
+
 function handleResize() {
   const { clientWidth, clientHeight } = dom.canvas.parentElement;
   camera.aspect = clientWidth / clientHeight;
@@ -1097,6 +1245,7 @@ window.addEventListener("resize", handleResize);
 buildDatasetControls();
 handleResize();
 setInteractionMode("fly");
+updateRecordingButton();
 setLoadProgress("Preparing viewer...", null, { indeterminate: true });
 loadDataset("cw-top");
 
