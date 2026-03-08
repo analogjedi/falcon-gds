@@ -355,7 +355,7 @@ function startManualRecording() {
   }
 
   try {
-    const stream = dom.canvas.captureStream(60);
+    const stream = dom.canvas.captureStream(30);
     const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     const recording = {
       recorder,
